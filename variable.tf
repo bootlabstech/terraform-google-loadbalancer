@@ -189,3 +189,8 @@ variable "ssl_certificate_name" {
   type        = string
   
 }
+variable "ssl_project_id" {
+  description = "Name to assign to the Google Cloud SSL certificate resource."
+  type        = string
+  
+}

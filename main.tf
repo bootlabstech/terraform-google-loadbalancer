@@ -46,7 +46,7 @@ resource "google_compute_ssl_certificate" "external_ssl" {
   count = local.is_external ? 1 : 0
 
   name        = var.ssl_certificate_name
-  project     = var.project_id
+  project     = var.ssl_project_id
 
   private_key = data.google_storage_bucket_object_content.private_key.content
   certificate = data.google_storage_bucket_object_content.certificate.content
@@ -59,7 +59,7 @@ resource "google_compute_region_ssl_certificate" "internal_ssl" {
   count = local.is_internal ? 1 : 0
 
   name    = var.ssl_certificate_name
-  project = var.project_id
+  project = var.ssl_project_id
   region  = var.region
 
   private_key = data.google_storage_bucket_object_content.private_key.content
@@ -378,3 +378,63 @@ resource "google_compute_forwarding_rule" "internal_fr" {
   ip_address            = google_compute_address.internal_ip[0].address
 }
 
+resource "google_compute_security_policy" "ext_policy" {
+  count                  = local.is_external ? 1 : 0
+  name    = "${var.name}-cloud-policy"
+  project = var.project_id
+  rule {
+    action   = "deny(403)"
+    priority = "2147483647"
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "default rule"
+  }
+  rule {
+    action   = "allow"
+    preview  = false
+    priority = 1000
+
+    match {
+      versioned_expr = "SRC_IPS_V1"
+
+      config {
+        src_ip_ranges = [
+          "103.21.244.0/22",
+          "103.22.200.0/22",
+          "103.31.4.0/22",
+          "108.162.192.0/18",
+          "141.101.64.0/18",
+          "173.245.48.0/20",
+          "188.114.96.0/20",
+          "190.93.240.0/20",
+          "197.234.240.0/22",
+          "198.41.128.0/17",
+        ]
+      }
+    }
+  }
+  rule {
+    action      = "allow"
+    description = "rule 2"
+    preview     = false
+    priority    = 1001
+
+    match {
+      versioned_expr = "SRC_IPS_V1"
+
+      config {
+        src_ip_ranges = [
+          "104.16.0.0/13",
+          "104.24.0.0/14",
+          "131.0.72.0/22",
+          "162.158.0.0/15",
+          "172.64.0.0/13",
+        ]
+      }
+    }
+  }
+}
