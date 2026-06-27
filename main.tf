@@ -131,15 +131,7 @@ resource "google_compute_network_endpoint" "neg_endpoints" {
   instance               = lookup(each.value, "instance", null)
 }
 
-# ============================================================
 # BACKEND TYPE: SERVERLESS (Cloud Run / Cloud Functions)
-# Always a REGIONAL NEG, even when fronted by an external (global-style) LB.
-# Only one of cloud_run / cloud_function is set, matching var.serverless_type.
-# Note: App Engine serverless NEGs are intentionally not modeled here — they
-# are only supported behind global external LBs, not regional internal LBs,
-# so they don't fit this module's internal/external symmetry. Add a third
-# branch with an `app_engine {}` block if you need it for external-only use.
-# ============================================================
 resource "google_compute_region_network_endpoint_group" "serverless_neg" {
   count                 = local.use_serverless ? 1 : 0
   project               = var.project_id

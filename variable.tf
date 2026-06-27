@@ -37,19 +37,13 @@ variable "subnetwork" {
 variable "lb_type" {
   type        = string
   description = "Load balancer scope: 'internal' or 'external'."
-  validation {
-    condition     = contains(["internal", "external"], var.lb_type)
-    error_message = "lb_type must be 'internal' or 'external'."
-  }
+ 
 }
 
 variable "backend_type" {
   type        = string
   description = "Backend implementation: 'neg', 'bucket', 'instance_group', or 'serverless'."
-  validation {
-    condition     = contains(["neg", "bucket", "instance_group", "serverless"], var.backend_type)
-    error_message = "backend_type must be one of: neg, bucket, instance_group, serverless."
-  }
+ 
 }
 
 # -----------------------------
@@ -88,10 +82,7 @@ variable "neg_type" {
   type        = string
   default     = "GCE_VM_IP_PORT"
   description = "Network endpoint type for VM-based NEGs. Must be GCE_VM_IP_PORT. (Use backend_type = 'serverless' for Cloud Run/Cloud Functions instead of setting this to SERVERLESS.)"
-  validation {
-    condition     = var.neg_type == "GCE_VM_IP_PORT"
-    error_message = "neg_type must be GCE_VM_IP_PORT. For serverless backends, set backend_type = \"serverless\" and use serverless_type instead."
-  }
+ 
 }
 
 variable "neg_endpoints" {
@@ -117,10 +108,7 @@ variable "serverless_type" {
   type        = string
   default     = "cloud_run"
   description = "Which serverless product backs the NEG: 'cloud_run' or 'cloud_function'. Required when backend_type = 'serverless'."
-  validation {
-    condition     = contains(["cloud_run", "cloud_function"], var.serverless_type)
-    error_message = "serverless_type must be 'cloud_run' or 'cloud_function'."
-  }
+  
 }
 
 variable "cloud_run_service_name" {
