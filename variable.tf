@@ -84,7 +84,6 @@ variable "neg_type" {
   description = "Network endpoint type for VM-based NEGs. Must be GCE_VM_IP_PORT. (Use backend_type = 'serverless' for Cloud Run/Cloud Functions instead of setting this to SERVERLESS.)"
  
 }
-
 variable "neg_endpoints" {
   type = list(object({
     ip       = string
