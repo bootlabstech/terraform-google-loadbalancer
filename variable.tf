@@ -49,10 +49,10 @@ variable "backend_type" {
 # -----------------------------
 # SSL CERT
 # -----------------------------
-variable "existing_ssl_name" {
-  type        = string
-  description = "Name of the existing SSL certificate (global cert for external LB, regional cert for internal LB)."
-}
+# variable "existing_ssl_name" {
+#   type        = string
+#   description = "Name of the existing SSL certificate (global cert for external LB, regional cert for internal LB)."
+# }
 
 # -----------------------------
 # INSTANCE GROUP (UMIG) BACKEND
