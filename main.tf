@@ -23,15 +23,11 @@ locals {
   need_external_backend_svc = local.is_external && !local.use_bucket
   need_internal_backend_svc = local.is_internal && !local.use_bucket
 
-  # Health checks only apply to neg (VM IP:port) and instance_group backends.
-  # Serverless NEGs don't support traditional health checks (outlier detection is used instead),
-  # and bucket backends don't have a backend service at all.
   need_health_check = !local.use_bucket && !local.use_serverless
 }
 ############################
 # SSL CERTIFICATES
 ############################
-
 data "google_storage_bucket_object_content" "certificate" {
   bucket = var.ssl_bucket
   name   = var.ssl_cert_object
@@ -41,12 +37,16 @@ data "google_storage_bucket_object_content" "private_key" {
   bucket = var.ssl_bucket
   name   = var.ssl_key_object
 }
+data "google_compute_ssl_certificate" "existing_external_ssl" {
+  count   = local.is_external && !var.create_ssl_certificate ? 1 : 0
+  name    = var.ssl_certificate_name
+  project = var.ssl_project_id
+}
 
 resource "google_compute_ssl_certificate" "external_ssl" {
-  count = local.is_external ? 1 : 0
-
-  name        = var.ssl_certificate_name
-  project     = var.ssl_project_id
+  count   = local.is_external && var.create_ssl_certificate ? 1 : 0
+  name    = var.ssl_certificate_name
+  project = var.ssl_project_id
 
   private_key = data.google_storage_bucket_object_content.private_key.content
   certificate = data.google_storage_bucket_object_content.certificate.content
@@ -55,9 +55,15 @@ resource "google_compute_ssl_certificate" "external_ssl" {
     create_before_destroy = true
   }
 }
-resource "google_compute_region_ssl_certificate" "internal_ssl" {
-  count = local.is_internal ? 1 : 0
+data "google_compute_region_ssl_certificate" "existing_internal_ssl" {
+  count   = local.is_internal && !var.create_ssl_certificate ? 1 : 0
+  name    = var.ssl_certificate_name
+  project = var.ssl_project_id
+  region  = var.region
+}
 
+resource "google_compute_region_ssl_certificate" "internal_ssl" {
+  count   = local.is_internal && var.create_ssl_certificate ? 1 : 0
   name    = var.ssl_certificate_name
   project = var.ssl_project_id
   region  = var.region
@@ -69,25 +75,7 @@ resource "google_compute_region_ssl_certificate" "internal_ssl" {
     create_before_destroy = true
   }
 }
- 
-# # -----------------------------
-# # EXTERNAL LB (GLOBAL SSL CERT)
-# # -----------------------------
-# data "google_compute_ssl_certificate" "external_ssl" {
-#   count   = local.is_external ? 1 : 0
-#   name    = var.existing_ssl_name
-#   project = var.project_id
-# }
 
-# # -----------------------------
-# # INTERNAL LB (REGIONAL SSL CERT)
-# # -----------------------------
-# data "google_compute_region_ssl_certificate" "internal_ssl" {
-#   count   = local.is_internal ? 1 : 0
-#   name    = var.existing_ssl_name
-#   project = var.project_id
-#   region  = var.region
-# }
 
 # ============================================================
 # BACKEND TYPE: INSTANCE GROUP (UMIG)
@@ -204,7 +192,7 @@ resource "google_compute_backend_service" "external_backend" {
   health_checks                   = local.need_health_check ? [google_compute_health_check.external_hc[0].id] : null
   session_affinity                = local.use_serverless ? null : "NONE"
   timeout_sec                     = local.use_serverless ? null : 30
-  security_policy                 = var.security_policy_id != "" ? var.security_policy_id : null
+  security_policy = local.is_external ? google_compute_security_policy.ext_policy[0].id : null
 
   dynamic "backend" {
     for_each = local.use_umig ? [1] : []
@@ -311,7 +299,11 @@ resource "google_compute_target_https_proxy" "external_proxy" {
   project          = var.project_id
   name             = "${var.name}-proxy"
   url_map          = google_compute_url_map.external_url_map[0].id
-  ssl_certificates = [google_compute_ssl_certificate.external_ssl[0].self_link]
+ssl_certificates = [
+    var.create_ssl_certificate
+    ? google_compute_ssl_certificate.external_ssl[0].self_link
+    : data.google_compute_ssl_certificate.existing_external_ssl[0].self_link
+  ]
 }
 
 resource "google_compute_region_target_https_proxy" "internal_proxy" {
@@ -320,8 +312,13 @@ resource "google_compute_region_target_https_proxy" "internal_proxy" {
   region           = var.region
   name             = "${var.name}-proxy"
   url_map          = google_compute_region_url_map.internal_url_map[0].id
-  ssl_certificates = [google_compute_region_ssl_certificate.internal_ssl[0].self_link]
+  ssl_certificates = [
+    var.create_ssl_certificate
+    ? google_compute_region_ssl_certificate.internal_ssl[0].self_link
+    : data.google_compute_region_ssl_certificate.existing_internal_ssl[0].self_link
+  ]
 }
+
 
 # ============================================================
 # IP ADDRESS
