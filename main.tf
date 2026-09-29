@@ -281,6 +281,12 @@ resource "google_compute_url_map" "external_url_map" {
   default_service = (local.use_bucket
   ? google_compute_backend_bucket.bucket_backend[0].id
   : google_compute_backend_service.external_backend[0].id)
+  lifecycle {
+    ignore_changes = [
+      host_rule,
+      path_matcher
+    ]
+  }
 }
 
 resource "google_compute_region_url_map" "internal_url_map" {
@@ -289,6 +295,12 @@ resource "google_compute_region_url_map" "internal_url_map" {
   region          = var.region
   name            = "${var.name}-url-map"
   default_service = google_compute_region_backend_service.internal_backend[0].id
+  lifecycle {
+    ignore_changes = [
+      host_rule,
+      path_matcher
+    ]
+  }
 }
 
 # ============================================================
